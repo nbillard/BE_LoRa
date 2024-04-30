@@ -1,8 +1,16 @@
+
+// #define GPS_ENABLE
+// #define TX_ENABLE
+#define RX_ENABLE
+
+
 // -----------------------------------------------------------------------------------------
 // |                                                                                       |
 // |                               GPS                                                     |
 // |                                                                                       |
 // -----------------------------------------------------------------------------------------
+
+#ifdef GPS_ENABLE
 #include <Adafruit_GPS.h>
 #include <SoftwareSerial.h>
 
@@ -46,12 +54,15 @@ void useInterrupt(boolean v) {
 
 uint32_t timer = millis();
 
+#endif
+
 // -----------------------------------------------------------------------------------------
 // |                                                                                       |
 // |                                 TX                                                    |
 // |                                                                                       |
 // -----------------------------------------------------------------------------------------
 
+#ifdef TX_ENABLE
 #include <Wire.h>
 #include <arduinoUtils.h>
 
@@ -79,13 +90,21 @@ float TOA = 0; //en ms
 
 // status variables
 int8_t e;
+
+#ifndef CONFIG_CREATED
 boolean ConfigOK = true; //passe à false si problème d'allumage, de config de la fréquence ou de la puissance de sortie
+#define CONFIG_CREATED
+#endif
+
+#endif
 
 // -----------------------------------------------------------------------------------------
 // |                                                                                       |
 // |                               Rx                                                      |
 // |                                                                                       |
 // -----------------------------------------------------------------------------------------
+
+#ifdef RX_ENABLE
   
 #include <Wire.h>
 #include <arduinoUtils.h>
@@ -107,9 +126,16 @@ boolean ConfigOK = true; //passe à false si problème d'allumage, de config de 
 
 uint8_t rx_address = RX_Addr;
 
-// status variables
-int8_t e;
+
+#ifndef CONFIG_CREATED
 boolean ConfigOK = true; //passe à false si problème d'allumage, de config de la fréquence ou de la puissance de sortie
+#define CONFIG_CREATED
+#endif
+
+// status variables
+int8_t e_rx;
+
+#endif
 
 void setup() {
   // -----------------------------------------------------------------------------------------
@@ -117,6 +143,8 @@ void setup() {
   // |                               GPS                                                     |
   // |                                                                                       |
   // -----------------------------------------------------------------------------------------
+
+  #ifdef GPS_ENABLE
   // put your setup code here, to run once:
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
@@ -145,11 +173,14 @@ void setup() {
   Serial.println(PMTK_Q_RELEASE);  //marche.
   Serial.println(ARDUINO); 
 
+#endif
   // -----------------------------------------------------------------------------------------
   // |                                                                                       |
   // |                               TX                                                      |
   // |                                                                                       |
   // -----------------------------------------------------------------------------------------
+
+#ifdef TX_ENABLE
   
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
@@ -252,11 +283,15 @@ void setup() {
     Serial.println(F("TOA longer than transmission period !"));
     waitPeriod = 5000;
   }
+
+  #endif
   // -----------------------------------------------------------------------------------------
   // |                                                                                       |
-  // |                               TX                                                      |
+  // |                               RX                                                      |
   // |                                                                                       |
   // -----------------------------------------------------------------------------------------
+
+  #ifdef RX_ENABLE
    // Open serial communications and wait for port to open:
   Serial.begin(115200);
 
@@ -264,8 +299,8 @@ void setup() {
   Serial.println(F("SX1272 module configuration in Arduino"));
 
   // Power ON the module
-  e = sx1272.ON();
-  if (e == 0)
+  e_rx = sx1272.ON();
+  if (e_rx == 0)
   {
     Serial.println(F("SX1272 Module on"));
   }
@@ -276,10 +311,10 @@ void setup() {
   }
 
   // Select frequency channel
-  e = sx1272.setChannel(freq_centrale);
+  e_rx = sx1272.setChannel(freq_centrale);
   Serial.print(F("Frequency channel "));
   Serial.print(freq_centrale,HEX);
-  if (e == 0)
+  if (e_rx == 0)
   {
     Serial.println(F(" has been successfully set."));
   }
@@ -290,10 +325,10 @@ void setup() {
   }
 
   // Select output power
-  e = sx1272.setPower(OutPower);
+  e_rx = sx1272.setPower(OutPower);
   Serial.print(F("Output power "));
   Serial.print(OutPower,HEX);
-  if (e == 0)
+  if (e_rx == 0)
   {
     Serial.println(F(" has been successfully set."));
   }
@@ -305,17 +340,17 @@ void setup() {
   
   if (ConfigOK == true) {
     // Set header
-    e = sx1272.setHeaderON();
+    e_rx = sx1272.setHeaderON();
     // Set transmission mode
-    e = sx1272.setCR(CR_5);    // CR = 4/5
-    e = sx1272.setSF(SF_12);   // SF = 12
-    e = sx1272.setBW(BW_125);    // BW = 125 KHz
+    e_rx = sx1272.setCR(CR_5);    // CR = 4/5
+    e_rx = sx1272.setSF(SF_12);   // SF = 12
+    e_rx = sx1272.setBW(BW_125);    // BW = 125 KHz
     // Set CRC
-    e = sx1272.setCRC_ON();
+    e_rx = sx1272.setCRC_ON();
     // Set the node address
-    e = sx1272.setNodeAddress(rx_address);
+    e_rx = sx1272.setNodeAddress(rx_address);
     // Set the length of preamble
-    e = sx1272.setPreambleLength(PreambLong);
+    e_rx = sx1272.setPreambleLength(PreambLong);
     // Set the number of transmission retries
     sx1272._maxRetries = MaxNbRetries; 
 
@@ -350,6 +385,8 @@ void setup() {
     Serial.println(F("Packet status ; Packet number ; Received data ; RSSI packet (dBm) ; source address"));
     Serial.println(F("\n "));
   } 
+
+  #endif
 }
 
 void loop() {
@@ -358,8 +395,10 @@ void loop() {
   // |                               GPS                                                     |
   // |                                                                                       |
   // -----------------------------------------------------------------------------------------
+  #ifdef GPS_ENABLE
+  
   // put your main code here, to run repeatedly:
-    // in case you are not using the interrupt above, you'll
+  // in case you are not using the interrupt above, you'll
   // need to 'hand query' the GPS, not suggested :(
   if (! usingInterrupt) {
     // read data from the GPS in the 'main loop'
@@ -419,12 +458,15 @@ void loop() {
    // }
   }
 
+  #endif
+
   // -----------------------------------------------------------------------------------------
   // |                                                                                       |
   // |                               Tx                                                      |
   // |                                                                                       |
   // -----------------------------------------------------------------------------------------
- 
+  #ifdef TX_ENABLE
+
   uint8_t dest_address = BROADCAST_ADDR;  //adresse du destinataire
   int i = 0;  //compteur de paquets transmis
 
@@ -443,17 +485,23 @@ void loop() {
     delay(waitPeriod); //on met une durée tampon pour émettre toutes les 5 secondes  
   }
 
+  #endif
+
   // -----------------------------------------------------------------------------------------
   // |                                                                                       |
   // |                               Rx                                                      |
   // |                                                                                       |
   // -----------------------------------------------------------------------------------------
+  #ifdef RX_ENABLE
+ 
  char StatusRXMessage;
 
+
+
   if (ConfigOK == true) {
-    e = sx1272.receivePacketTimeout(WaitRxMax);
+    e_rx = sx1272.receivePacketTimeout(WaitRxMax);
     //paquet reçu, correct ou non
-    if (e == 0) {
+    if (e_rx == 0) {
       if (sx1272._reception == CORRECT_PACKET) {
         StatusRXMessage = '1';    
       }
@@ -467,17 +515,23 @@ void loop() {
     }  
   
     //écriture de la ligne de résultat
+
+    Serial.print(F("Status Message: "));
     Serial.print(StatusRXMessage);
-    Serial.print(F(" ; "));
+    Serial.print(F(" ;\nPacket Number: "));
     Serial.print(sx1272.packet_received.packnum,DEC);
-    Serial.print(F(" ; "));
+    Serial.print(F(" ;\nData: "));
     for (uint8_t i =0; i < sx1272.packet_received.length; i++) {
       Serial.print(sx1272.packet_received.data[i]);  
     }
-    Serial.print(F(" ; "));
-    e = sx1272.getRSSIpacket();
+    Serial.print(F(" ;\nRSSI: "));
+    e_rx = sx1272.getRSSIpacket();
     Serial.print(sx1272._RSSIpacket, DEC); 
-    Serial.print(F(" ; "));
+    Serial.print(F(" ;\nAddress: "));
     Serial.print(sx1272.packet_received.src,DEC);
+     
+    Serial.print(F(" ;\n\n\n"));
   }
+
+  #endif
 }
