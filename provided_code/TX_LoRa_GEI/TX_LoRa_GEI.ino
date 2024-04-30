@@ -26,7 +26,7 @@
 
 
 uint8_t tx_address = TX_Addr;
-char Message[MessageLong] = "4IR-SC/INSA/the_bests";
+char Message[MessageLong] = "4IR-SC/INSA";
 float waitPeriod = 5000; //en ms
 float TOA = 0; //en ms
 
