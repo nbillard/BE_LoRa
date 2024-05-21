@@ -1,7 +1,11 @@
 
 #define GPS_ENABLE
 // #define TX_ENABLE
-// #define RX_ENABLE
+#define RX_ENABLE
+
+
+
+#define check_err(err, msg) if(err) {Serial.print(F("ERROR: ")); Serial.print(F(msg)); Serial.print(F("\n"));}
 
 
 // -----------------------------------------------------------------------------------------
@@ -22,6 +26,7 @@ Adafruit_GPS GPS(&mySerial);
 
 
 #define GPSECHO  false //pour ne pas avoir les données brutes
+
 
 boolean usingInterrupt = true;
 void useInterrupt(boolean); // Func prototype keeps Arduino 0023 happy
@@ -58,48 +63,6 @@ uint32_t timer = millis();
 
 // -----------------------------------------------------------------------------------------
 // |                                                                                       |
-// |                                 TX                                                    |
-// |                                                                                       |
-// -----------------------------------------------------------------------------------------
-
-#ifdef TX_ENABLE
-#include <Wire.h>
-#include <arduinoUtils.h>
-
-// Include the SX1272 and SPI library:
-#include "sx1272_INSAT.h"
-#include <SPI.h>
-
-#define freq_centrale CH_868v1
-#define BW BW_125
-#define CR CR_5
-#define SF SF_12
-#define OutPower POW_14
-#define PreambLong 12
-#define TX_Addr 2
-#define MessageLong 12
-#define MaxNbRetries 3
-#define PeriodTransmission 5000 //en ms
-#define WaitTxMax 2000 //en ms
-
-
-uint8_t tx_address = TX_Addr;
-char Message[MessageLong] = "4IR-RT/INSA";
-float waitPeriod = 5000; //en ms
-float TOA = 0; //en ms
-
-// status variables
-int8_t e;
-
-#ifndef CONFIG_CREATED
-boolean ConfigOK = true; //passe à false si problème d'allumage, de config de la fréquence ou de la puissance de sortie
-#define CONFIG_CREATED
-#endif
-
-#endif
-
-// -----------------------------------------------------------------------------------------
-// |                                                                                       |
 // |                               Rx                                                      |
 // |                                                                                       |
 // -----------------------------------------------------------------------------------------
@@ -119,7 +82,7 @@ boolean ConfigOK = true; //passe à false si problème d'allumage, de config de 
 #define SF SF_12
 #define OutPower POW_14
 #define PreambLong 12
-#define RX_Addr 8
+#define RX_Addr 1 // TODO changed: was 8
 #define MaxNbRetries 3
 #define WaitRxMax 7000 //en ms
 
@@ -149,6 +112,7 @@ void setup() {
   // connect at 115200 so we can read the GPS fast enough and echo without dropping chars
   // also spit it out
   Serial.begin(115200);
+  Serial.print("---------------------------- SETUP ---------------------------");
   Serial.print("Adafruit GPS library basic test!\n");
 
   // 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
@@ -177,118 +141,6 @@ void setup() {
   Serial.print(F("\n")); 
 
 #endif
-  // -----------------------------------------------------------------------------------------
-  // |                                                                                       |
-  // |                               TX                                                      |
-  // |                                                                                       |
-  // -----------------------------------------------------------------------------------------
-
-#ifdef TX_ENABLE
-  
-  // Open serial communications and wait for port to open:
-  Serial.begin(115200);
-
-  // Print a start message
-  Serial.print(F("SX1272 module configuration in Arduino\n"));
-
-  // Power ON the module
-  e = sx1272.ON();
-  if (e == 0)
-  {
-    Serial.print(F("SX1272 Module on\n"));
-  }
-  else
-  {
-    Serial.print(F("Problem of activation of SX1272 Module !\n"));
-    ConfigOK = false;
-  }
-
-  // Select frequency channel
-  e = sx1272.setChannel(freq_centrale);
-  Serial.print(F("Frequency channel "));
-  Serial.print(freq_centrale,HEX);
-  if (e == 0)
-  {
-    Serial.print(F(" has been successfully set.\n"));
-  }
-  else
-  {
-    Serial.print(F(" has not been set !\n"));
-    ConfigOK = false;
-  }
-
-  // Select output power
-  e = sx1272.setPower(OutPower);
-  Serial.print(F("Output power "));
-  Serial.print(OutPower,HEX);
-  if (e == 0)
-  {
-    Serial.print(F(" has been successfully set.\n"));
-  }
-  else
-  {
-    Serial.print(F(" has not been set !\n"));
-    ConfigOK = false;
-  }
-  
-  if (ConfigOK == true) {
-    // Set header
-    e = sx1272.setHeaderON();
-    // Set transmission mode
-    e = sx1272.setCR(CR_5);    // CR = 4/5
-    e = sx1272.setSF(SF);   // SF = 12
-    e = sx1272.setBW(BW_125);    // BW = 125 KHz
-    // Set CRC
-    e = sx1272.setCRC_ON();
-    // Set the node address
-    e = sx1272.setNodeAddress(tx_address);
-    // Set the length of preamble
-    e = sx1272.setPreambleLength(PreambLong);
-    // Set the number of transmission retries
-    sx1272._maxRetries = MaxNbRetries; 
-
-    //parameters display 
-    Serial.print(F("#Verification of parameters:#\n"));
-    Serial.print(F("  Node address: "));
-    Serial.print(sx1272._nodeAddress,DEC);  
-    Serial.print(F("\n  Bandwidth: "));
-    Serial.print(sx1272._bandwidth,DEC);  
-    Serial.print(F("\n  Coding rate: "));
-    Serial.print(sx1272._codingRate,DEC);
-    Serial.print(F("\n  Spreading factor: "));
-    Serial.print(sx1272._spreadingFactor,DEC);  
-    Serial.print(F("\n  Header mode: "));
-    Serial.print(sx1272._header,DEC); 
-    Serial.print(F("\n  CRC field: "));
-    Serial.print(sx1272._CRC,DEC); 
-    Serial.print(F("\n  BW: "));
-    Serial.print(sx1272._bandwidth,DEC); 
-    Serial.print(F("\nSX1272 successfully configured !\n"));
-  }
-  else
-  {
-    Serial.print(F("SX1272 initialization failed !\n")); 
-  }
-
-  if (ConfigOK == true) {
-    delay(1000);  
-    Serial.print(F("  \n"));
-    Serial.print(F("----------------------------------------\n"));
-    Serial.print(F("Continuous transmission in broadcast mode.\n")); 
-    Serial.print(F("----------------------------------------\n")); 
-  } 
-
-  TOA = sx1272.timeOnAir();
-  waitPeriod = PeriodTransmission-TOA;
-  Serial.print(F("  TOA (s): "));
-  Serial.print(TOA,DEC); 
-  Serial.print(F("\n"));
-  if (waitPeriod < 0) {
-    Serial.print(F("TOA longer than transmission period !\n"));
-    waitPeriod = 5000;
-  }
-
-  #endif
   // -----------------------------------------------------------------------------------------
   // |                                                                                       |
   // |                               RX                                                      |
@@ -344,17 +196,17 @@ void setup() {
   
   if (ConfigOK == true) {
     // Set header
-    e_rx = sx1272.setHeaderON();
+    check_err(sx1272.setHeaderON(), "Could not set header to explicit")
     // Set transmission mode
-    e_rx = sx1272.setCR(CR_5);    // CR = 4/5
-    e_rx = sx1272.setSF(SF_12);   // SF = 12
-    e_rx = sx1272.setBW(BW_125);    // BW = 125 KHz
+    check_err(sx1272.setCR(CR_5), "Could not set Coding Rate")    // CR = 4/5
+    check_err(sx1272.setSF(SF_12), "Could not set Spreading Factor")   // SF = 12
+    check_err(sx1272.setBW(BW_125), "Could not set bandwidth")    // BW = 125 KHz
     // Set CRC
-    e_rx = sx1272.setCRC_ON();
+    check_err(sx1272.setCRC_ON(), "Could not set CRC to on")
     // Set the node address
-    e_rx = sx1272.setNodeAddress(rx_address);
+    check_err(sx1272.setNodeAddress(rx_address), "Could not set Gateway address");
     // Set the length of preamble
-    e_rx = sx1272.setPreambleLength(PreambLong);
+    check_err(sx1272.setPreambleLength(PreambLong), "Could not set Preamble length");
     // Set the number of transmission retries
     sx1272._maxRetries = MaxNbRetries; 
 
@@ -391,6 +243,7 @@ void setup() {
   } 
 
   #endif
+  Serial.print(F("------------------------------------------"));
 }
 
 void loop() {
@@ -439,11 +292,14 @@ void loop() {
     Serial.print(GPS.seconds, DEC); Serial.print('.');
     Serial.print(GPS.milliseconds);
     Serial.print("\nDate: ");
-    Serial.print(GPS.day, DEC); Serial.print('/');
-    Serial.print(GPS.month, DEC); Serial.print("/20");
+    Serial.print(GPS.day, DEC); 
+    Serial.print('/');
+    Serial.print(GPS.month, DEC); 
+    Serial.print("/20");
     Serial.print(GPS.year, DEC);
-    Serial.print("\nFix: "); Serial.print((int)GPS.fix);
-    Serial.print(" quality: "); 
+    Serial.print("\nFix: "); 
+    Serial.print((int)GPS.fix);
+    Serial.print("\nquality: "); 
     Serial.print((int)GPS.fixquality); 
     //Uncomment the loop to display NMEA frame only when GPS module is locked on satellites (GPS fix).
     //if (GPS.fix) {
@@ -468,33 +324,6 @@ void loop() {
       Serial.print((int)GPS.satellites);
       Serial.print("\n"); 
    // }
-  }
-
-  #endif
-
-  // -----------------------------------------------------------------------------------------
-  // |                                                                                       |
-  // |                               Tx                                                      |
-  // |                                                                                       |
-  // -----------------------------------------------------------------------------------------
-  #ifdef TX_ENABLE
-
-  uint8_t dest_address = BROADCAST_ADDR;  //adresse du destinataire
-  int i = 0;  //compteur de paquets transmis
-
-  if (ConfigOK == true) {
-    e = sx1272.sendPacketTimeout(dest_address,Message,WaitTxMax);   
-
-    if (e == 0) {
-      Serial.print(F("\n Packet number "));
-      Serial.print(i,DEC);
-      Serial.print(F("\n sent.\n"));  
-      i++;
-    }
-    else {
-      Serial.print(F("\n Trasmission problem !\n"));  
-    }
-    delay(waitPeriod); //on met une durée tampon pour émettre toutes les 5 secondes  
   }
 
   #endif
@@ -528,20 +357,23 @@ void loop() {
   
     //écriture de la ligne de résultat
 
+    
     Serial.print(F("Status Message: "));
     Serial.print(StatusRXMessage);
     Serial.print(F(" ;\nPacket Number: "));
     Serial.print(sx1272.packet_received.packnum,DEC);
     Serial.print(F(" ;\nData: "));
     for (uint8_t i =0; i < sx1272.packet_received.length; i++) {
-      Serial.print(sx1272.packet_received.data[i]);  
+      Serial.print((char) sx1272.packet_received.data[i]);  
     }
     Serial.print(F(" ;\nRSSI: "));
-    e_rx = sx1272.getRSSIpacket();
+    check_err(sx1272.getRSSIpacket(), "Could not get RSSI packet");
     Serial.print(sx1272._RSSIpacket, DEC); 
     Serial.print(F(" ;\nAddress: "));
     Serial.print(sx1272.packet_received.src,DEC);
-     
+    Serial.print(F(" ;\nSNR: "));
+    check_err(sx1272.getSNR(), "Could not get SNR");
+    Serial.print(sx1272._SNR, DEC);
     Serial.print(F(" ;\n\n\n"));
   }
 
